@@ -5,7 +5,8 @@ local red = assert(redis.open())
 
 red:set("dog", "an animal")
 
-print("dog", red:get"dog")
+assert(red:get"dog" == "an animal", "test 1 failed")
+print"test 1 passed"
 
 red:multi()
 
@@ -14,4 +15,6 @@ red:set("cat", "Marry")
 -- works too
 red.set("horse", "Bob")
 
-print("exec", EncodeLua(red:exec()))
+local ret = red:exec()
+assert(ret[1] == "OK" and ret[2] == "OK", "test 2 failed")
+print"test 2 passed"
