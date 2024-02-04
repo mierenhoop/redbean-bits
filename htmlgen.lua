@@ -1,7 +1,9 @@
 local function htmlgen(wrt)
   wrt = wrt or Write
+  local gsub, format = string.gsub, string.format
+  local select, setmetatable = select, setmetatable
   local esc = EscapeHtml or function(s)
-    return (s:gsub("[&><\"']", {
+    return (gsub(s, "[&><\"']", {
       ["&"]="&amp;", [">"]="&gt;",
       ["<"]="&lt;", ["\""]="&quot;",
       ["'"]="&#39;",
@@ -39,15 +41,15 @@ local function htmlgen(wrt)
     doc = function() wrt"<!DOCTYPE html>" end,
     text = function(self, text, ...)
       closetag()
-      if select("#", ...) == 0 then
-        text = string.format(text, ...)
+      if select("#", ...) > 0 then
+        text = format(text, ...)
       end
       wrt(esc(text))
     end,
     raw = function(self, raw, ...)
       closetag()
-      if select("#", ...) == 0 then
-        raw = string.format(raw, ...)
+      if select("#", ...) > 0 then
+        raw = format(raw, ...)
       end
       wrt(raw)
     end,

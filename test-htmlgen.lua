@@ -1,3 +1,5 @@
+package.path="./?.lua"
+
 local htmlgen = require"htmlgen"
 
 local buf = {}
@@ -29,11 +31,13 @@ do
 
   local div = h"div"
   div{onclick=[[alert("&><\"'")]]}
+  h:text("escape me %s", "<")
   div:close()
   h"br"
+  h:raw"don't <strong>escape</strong> me"
   root:close()
   h:close()
 end
 
-assert(table.concat(buf) == [[<main class="center" id="main"><div onclick="alert(&quot;&amp;&gt;&lt;\&quot;&#39;&quot;)"></div><br></main>]], "test 2 failed")
+assert(table.concat(buf) == [[<main class="center" id="main"><div onclick="alert(&quot;&amp;&gt;&lt;\&quot;&#39;&quot;)">escape me &lt;</div><br>don't <strong>escape</strong> me</main>]], "test 2 failed")
 print"text 2 passed"

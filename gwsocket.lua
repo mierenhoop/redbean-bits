@@ -2,64 +2,76 @@ local gwsocket = {}
 
 gwsocket.__index = gwsocket
 
+local function execpipe(cmd)
+  local fdor, fdow = assert(unix.pipe())
+  local fdir, fdiw = assert(unix.pipe())
+  local out
+  local pid = assert(unix.fork())
+  if pid == 0 then
+    assert(unix.close(fdiw))
+    assert(unix.dup(fdir, 0))
+    assert(unix.close(fdir))
+    assert(unix.close(fdor))
+    assert(unix.dup(fdow, 1))
+    assert(unix.close(fdow))
+
+    assert(unix.close(2)) -- stderr
+    assert(unix.execve(cmd[1], cmd))
+    assert(unix.exit(127))
+  end
+  assert(unix.close(fdow))
+  assert(unix.close(fdir))
+
+  return pid, fdiw, fdor
+end
+
+function gwsocket:listen(fn)
+  local pollfds = { [self.reader] = unix.POLLIN }
+
+  local _ <close> = setmetatable({}, { __close = function()
+    if self.reader then assert(unix.close(self.reader)) self.reader = nil end
+  end})
+
+  while true do
+    -- TODO: timeout?
+    assert(unix.poll(pollfds))
+
+    local client, typ
+    local len = unix.PIPE_BUF
+
+    if self.strict then
+      local header = assert(unix.read(self.reader, 12))
+      if header and header ~= "" then
+        client, typ, len = string.unpack(">III", header)
+      end
+    end
+
+    local data = assert(unix.read(self.reader, len))
+    if data ~= "" then
+      if fn(data, client, typ) then break end
+    end
+  end
+end
+
 function gwsocket:close()
-  print"close"
+  if self.writer then assert(unix.close(self.writer)) self.writer = nil end
+  if self.reader then assert(unix.close(self.reader)) self.reader = nil end
   if self.pid and self.ppid == unix.getpid() then
-    print"closing pid"
     assert(unix.kill(self.pid, unix.SIGINT))
     self.pid = nil
   end
 end
 
-gwsocket.__close, gwsocket.__gc = gwsocket.close, gwsocket.close
+gwsocket.__close = gwsocket.close
 
 function gwsocket:send(data, client, typ)
-  local path = self and self.pipein or "/tmp/wspipein.fifo"
-  local pipein, err = unix.open(path, unix.O_WRONLY)
-  if err then return nil, err end
-
   if self.strict then
     assert(client)
     local header = string.pack(">III", client, typ or 2, #data) -- default to binary
     data = header .. data
   end
 
-  local sent, err = unix.write(pipein, data)
-  unix.close(pipein)
-  return sent, err
-end
-
--- todo: make callback
-function gwsocket:poller()
-  local path = self and self.pipeout or "/tmp/wspipeout.fifo"
-  local pipeout = assert(unix.open(path, unix.O_RDONLY | unix.O_NONBLOCK))
-
-  local pollfds = { [pipeout] = unix.POLLIN }
-
-  local function closer()
-    assert(unix.close(pipeout))
-  end
-
-  return function()
-    print("polling")
-    -- TODO: timeout?
-    print("poll", EncodeLua{unix.poll(pollfds)})
-
-    local client, typ
-
-    if self.strict then
-      local header, err = unix.read(pipeout, 12)
-      print("header", #header, header)
-      local len
-      client, typ, len = header:unpack(">III")
-
-      local data, err = unix.read(pipeout, len)
-      print("data", #data, data)
-    end
-
-    local data, err = unix.read(pipeout)
-    return data ~= "" and data, client, typ
-  end, nil, nil, setmetatable({}, { __close = closer })
+  assert(assert(unix.write(self.writer, data)) == #data)
 end
 
 function gwsocket.open(opts)
@@ -69,19 +81,11 @@ function gwsocket.open(opts)
 
   self.strict = opts.strict ~= false
 
-  local args = { path, self.strict and "--strict" }
+  local args = { path, "--std", self.strict and "--strict" or nil }
 
-  local pid = assert(unix.fork())
-  if pid == 0 then
-    -- close stdout
-    unix.close(1)
-    assert(unix.execve(path, args))
-    unix.exit(127)
-  end
+  self.pid, self.writer, self.reader = execpipe(args)
 
-  self.ppid = unix.getpid()
-  self.pid = pid
-  print("ppid", self.ppid, "pid", pid)
+  self.ppid = assert(unix.getpid())
 
   return self
 end
