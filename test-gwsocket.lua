@@ -2,18 +2,14 @@ package.path="./?.lua"
 
 local gwsocket = require"gwsocket"
 
-local conn = gwsocket.open()
+local conn = gwsocket.open { strict = true }
 
-if assert(unix.fork()) == 0 then
-  Sleep(1)
-  print(gwsocket.send(conn, "from fn"))
-  print(conn:send("from method"))
-  print(gwsocket.send({pipeout="/tmp/pipeout.fifo"}, "from path"))
-  unix.exit(0)
-else
-  Sleep(.5)
-  print("poller", unix.getpid())
+Sleep(.5)
+while true do
   for data in conn:poller() do
     print(data)
+    --print(gwsocket.send(conn, "from fn"))
+    --print(conn:send("from method"))
+    --print(gwsocket.send({pipeout="/tmp/pipeout.fifo"}, "from path"))
   end
 end
