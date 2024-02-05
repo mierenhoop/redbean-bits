@@ -9,59 +9,66 @@ local function htmlgen(wrt)
       ["'"]="&#39;",
     }))
   end
-  local intag
-  local function closetag()
-      if intag then wrt(">") intag = false end
+  local function writeattr(t, off)
+    while off <= #t do
+      if type(t[off]) == "table" then
+        writeattr(t[off], 1)
+        off = off + 1
+      else
+        wrt(" "..t[off])
+        off = off + 1
+        if t[off] then
+          wrt("=\""..esc(t[off]).."\"")
+          off = off + 1
+        end
+      end
+    end
+    for k, v in pairs(t) do
+      if type(k) == "string" then
+        wrt(" "..k)
+        if v then
+          wrt("=\""..esc(v).."\"")
+        end
+      end
+    end
   end
+
   local mt = {
     __call = function(self, arg)
-      assert(intag)
-      for i = 1, #arg, 2 do
-        wrt(" "..arg[i])
-        if arg[i+1] then
-          wrt("=\""..esc(arg[i+1]).."\"")
-        end
-      end
-      for k, v in pairs(arg) do
-        if type(k) == "string" then
-          wrt(" "..k)
-          if v then
-            wrt("=\""..esc(v).."\"")
-          end
-        end
-      end
       return self
     end,
     __close = function(self)
-      closetag()
       wrt("</"..self.tag..">")
     end,
   }
   return setmetatable({
     doc = function() wrt"<!DOCTYPE html>" end,
     text = function(self, text, ...)
-      closetag()
       if select("#", ...) > 0 then
         text = format(text, ...)
       end
       wrt(esc(text))
     end,
     raw = function(self, raw, ...)
-      closetag()
       if select("#", ...) > 0 then
         raw = format(raw, ...)
       end
       wrt(raw)
     end,
-    close = closetag
   }, {
     __call = function(self, tag)
-      closetag()
+      local t
+      if type(tag) == "table" then
+        t = tag
+        tag = tag[1]
+      end
       wrt("<"..tag)
-      intag = true
-      return setmetatable({tag=tag,close=mt.__close}, mt)
+      if t then
+        writeattr(t, 2)
+      end
+      wrt">"
+      return setmetatable({tag=tag, close=mt.__close}, mt)
     end,
-    __close = closetag,
   })
 end
 

@@ -5,16 +5,16 @@ local htmlgen = require"htmlgen"
 local buf = {}
 local function appendbuf(s) buf[#buf+1] = s end
 do
-  local h <close> = htmlgen(appendbuf)
+  local h = htmlgen(appendbuf)
   h:doc()
 
-  local _ <close> = h"html"{"lang","en"}
+  local _ <close> = h{"html", "lang","en"}
 
   do
-    local _ <close> = h"div"{class="main"}{id="main"}
-    h"div"{class="section"}
+    local _ <close> = h{"div", {class="main"}, {id="main"}}
+    h{"div",class="section"}
     h:text"input number: "
-    h"input"{type="number"}
+    h{"input",type="number"}
     h"/div"
   end
 end
@@ -26,17 +26,14 @@ buf = {}
 do
   local h = htmlgen(appendbuf)
 
-  local root = h"main"
-  root{"class", "center", id="main"}
+  local root = h{"main", "class", "center", id="main"}
 
-  local div = h"div"
-  div{onclick=[[alert("&><\"'")]]}
+  local div = h{"div", onclick=[[alert("&><\"'")]]}
   h:text("escape me %s", "<")
   div:close()
   h"br"
   h:raw"don't <strong>escape</strong> me"
   root:close()
-  h:close()
 end
 
 assert(table.concat(buf) == [[<main class="center" id="main"><div onclick="alert(&quot;&amp;&gt;&lt;\&quot;&#39;&quot;)">escape me &lt;</div><br>don't <strong>escape</strong> me</main>]], "test 2 failed")
