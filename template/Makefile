@@ -6,11 +6,11 @@ DB_FILE=build/$(APPNAME).db
 APP=build/$(APPNAME).com
 FILES=.init.lua
 
-.PHONY: $(APP) $(DB_FILE) test deploy clean
+.PHONY: $(DB_FILE) test stop upload deploy run-remote clean
 
 all: $(APP)
 
-$(APP):
+$(APP): $(FILES)
 	./build/redbean.com -ie 'assert(Barf("$(APP)", assert(Slurp"./build/redbean.com")))'
 	./build/redbean.com -ie 'assert(unix.chmod("$(APP)", 0755))'
 	./build/zip.com -d $(APP) redbean.png favicon.ico help.txt
@@ -27,17 +27,15 @@ test: $(APP) $(DB_FILE)
 stop:
 	ssh $(REMOTE) pkill -F /var/opt/$(APPNAME).pid || true
 
-start:
-	ssh -t $(REMOTE) /opt/$(APPNAME).com -d -l 0.0.0.0 -p $(PORT) -P /var/opt/$(APPNAME).pid -L /var/opt/$(APPNAME).log
-
-upload: $(APP) $(DB_FILE)
+upload: stop $(APP) $(DB_FILE)
 	scp $(APP) $(REMOTE):/opt/$(APPNAME).com
 	scp $(DB_FILE) $(REMOTE):/var/opt/$(APPNAME).db
 
-deploy: stop upload start
+deploy: upload
+	ssh -t $(REMOTE) /opt/$(APPNAME).com -l 0.0.0.0 -p $(PORT) -d -P /var/opt/$(APPNAME).pid -L /var/opt/$(APPNAME).log
 
-run-remote: stop upload
-	ssh -t $(REMOTE) /opt/$(APP).com
+run-remote: upload
+	ssh -t $(REMOTE) /opt/$(APPNAME).com -l 0.0.0.0 -p $(PORT)
 
 clean:
 	./build/redbean.com -ie 'for _,f in ipairs{"$(DB_FILE)","$(APP)"} do unix.rmrf(f) end'
