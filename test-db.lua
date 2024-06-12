@@ -16,6 +16,19 @@ do
     i = 1
   end
   print"test 1 passed"
+
+  db:transaction(function()
+    db:urow("insert into a(v) values (3)")
+  end)
+  assert(db:urow"select 1 from a where v = 3" == 1)
+  print"test 2 passed"
+
+  pcall(db.transaction, db, function()
+    db:urow("insert into a(v) values (4)")
+    error()
+  end)
+  assert(db:urow"select 1 from a where v = 4" == nil)
+  print"test 3 passed"
 end
 
 unix.unlink("/tmp/test.db")

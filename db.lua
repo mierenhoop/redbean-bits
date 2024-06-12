@@ -1,25 +1,21 @@
 local db = {}
-
 db.__index = db
 
 local lsqlite3 = assert(lsqlite3 or require"lsqlite3", "db: lsqlite3 not found")
 
-function db.open(path)
-  local pid = unix.getpid()
-
+function db.open(path, opts)
+  opts = opts or {}
   local self = setmetatable({}, db)
-
   self._db = assert(lsqlite3.open(path), "db: could not open")
-  self.curpid = pid
-
-  self._db:busy_timeout(1000)
+  self._db:busy_timeout(opts.timeout or 1000)
   return self
 end
 
 function db:close()
-  self._db:close()
-  self._db = nil
-  self.curpid = nil
+  if self._db then
+    self._db:close()
+    self._db = nil
+  end
 end
 
 db.__close, db.__gc = db.close, db.close

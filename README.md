@@ -23,7 +23,7 @@ Note: if you only need server-to-client messages, take a look at Fullmoon's [SSE
 
 ## [db.lua](./db.lua)
 
-A small SQLite abstraction library.
+A small SQLite abstraction library. Does not use any Redbean specific functionality.
 
 ## [htmlgen.lua](./htmlgen.lua)
 
