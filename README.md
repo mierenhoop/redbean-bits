@@ -36,3 +36,8 @@ As opposed to templating (Lua in HTML or tables representing HTML), this method 
 Template of a simple build system which works cross platform.
 
 Note: in the Makefile, sqlite Zip VFS is used to add file permissions to the resulting binary. This is a workaround because zip.com doesn't add file permissions on Windows and redbean requires those to access its own zip contents.
+
+## [chktyp.lua](./chktyp.lua)
+
+A small helper function for checking types. Supports Lua's usual types, union (|),
+optional (?) and integer-only number.
