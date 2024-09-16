@@ -1,33 +1,33 @@
 package.path="./?.lua"
-local dbmod = require"db"
+local dbopen = require"db"
 
 unix.unlink("/tmp/test.db")
 do
-  local db <close> = dbmod.open"/tmp/test.db"
+  local db <close> = dbopen"/tmp/test.db"
 
-  db:exec[[
+  db.exec[[
   CREATE TABLE a (v);
   INSERT INTO a VALUES (1);
   ]]
 
   local i = 0
-  for v in db:urows"select v from a" do
+  for v in db.urows"select v from a" do
     assert(i == 0 and v == 1, "test 1 failed")
     i = 1
   end
   print"test 1 passed"
 
-  db:transaction(function()
-    db:urow("insert into a(v) values (3)")
+  db.transaction(function()
+    db.urow("insert into a(v) values (3)")
   end)
-  assert(db:urow"select 1 from a where v = 3" == 1)
+  assert(db.urow"select 1 from a where v = 3" == 1)
   print"test 2 passed"
 
-  pcall(db.transaction, db, function()
-    db:urow("insert into a(v) values (4)")
+  pcall(db.transaction, function()
+    db.urow("insert into a(v) values (4)")
     error()
   end)
-  assert(db:urow"select 1 from a where v = 4" == nil)
+  assert(db.urow"select 1 from a where v = 4" == nil)
   print"test 3 passed"
 end
 
